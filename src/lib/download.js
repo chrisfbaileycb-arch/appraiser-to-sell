@@ -1,21 +1,42 @@
 /**
- * Whacka client SDK — download (stub)
- *
- * The implementation runs on the Whacka platform and is provided to your app at
- * runtime; it is intentionally NOT part of this export. This stub only keeps
- * your imports resolving and documents which Whacka APIs your code uses. Your
- * own code (components, pages, hooks) is the real, complete export. See README.
+ * Download helper for files and reports
  */
 
-const __wk = (path) =>
-  new Proxy(function () {}, {
-    get: (_t, prop) =>
-      typeof prop === 'symbol' || prop === 'then' ? undefined : __wk(path + '.' + prop),
-    apply: () => {
-      throw new Error(
-        '`' + path + '` runs on the Whacka platform and is not available in exported code.'
-      );
-    },
-  });
+export const download = {
+  async saveFile(file, fileName = 'heirloom-appraisal-report.html') {
+    let url = ''
+    let shouldRevoke = false
 
-export const download = __wk('download');
+    if (typeof file === 'string') {
+      url = file
+    } else if (file instanceof Blob) {
+      url = URL.createObjectURL(file)
+      shouldRevoke = true
+    } else if (file && file.url) {
+      url = file.url
+    }
+
+    if (!url) {
+      throw new Error('No valid file to download')
+    }
+
+    const a = document.createElement('a')
+    a.href = url
+    // Normalize .pdf extension to .html if it's an HTML blob so browser/viewer opens correctly
+    const actualName = (file instanceof Blob && file.type.includes('html'))
+      ? fileName.replace(/\.pdf$/i, '.html')
+      : fileName
+
+    a.download = actualName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    if (shouldRevoke) {
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }
+    return true
+  },
+}
+
+export default download

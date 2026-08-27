@@ -1,0 +1,6 @@
+{
+  "name": "Heirloom",
+  "description": "Antique and collectible appraisal, authenticity analysis, and auction house directory.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

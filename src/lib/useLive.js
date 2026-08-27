@@ -1,22 +1,38 @@
-/**
- * Whacka client SDK — useLive (stub)
- *
- * The implementation runs on the Whacka platform and is provided to your app at
- * runtime; it is intentionally NOT part of this export. This stub only keeps
- * your imports resolving and documents which Whacka APIs your code uses. Your
- * own code (components, pages, hooks) is the real, complete export. See README.
- */
+import { useEffect, useState } from 'react'
+import { db } from './db'
 
-const __wk = (path) =>
-  new Proxy(function () {}, {
-    get: (_t, prop) =>
-      typeof prop === 'symbol' || prop === 'then' ? undefined : __wk(path + '.' + prop),
-    apply: () => {
-      throw new Error(
-        '`' + path + '` runs on the Whacka platform and is not available in exported code.'
-      );
-    },
-  });
+export function useLive(collection, options = {}) {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
 
-export const useLiveShared = __wk('useLiveShared');
-export const useLive = __wk('useLive');
+  useEffect(() => {
+    let alive = true
+
+    const handleUpdate = (rawItems) => {
+      if (!alive) return
+      let items = [...rawItems]
+      if (options.order) {
+        const isDesc = options.order.startsWith('-')
+        const field = isDesc ? options.order.slice(1) : options.order
+        items.sort((a, b) => {
+          const valA = a[field] || ''
+          const valB = b[field] || ''
+          return isDesc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1)
+        })
+      }
+      setData(items)
+      setLoading(false)
+    }
+
+    const unsub = db.subscribe(collection, handleUpdate)
+    return () => {
+      alive = false
+      unsub()
+    }
+  }, [collection, options.order])
+
+  return { data, loading }
+}
+
+export const useLiveShared = useLive
+export default useLive

@@ -1,22 +1,73 @@
 /**
- * Whacka client SDK — auth (stub)
- *
- * The implementation runs on the Whacka platform and is provided to your app at
- * runtime; it is intentionally NOT part of this export. This stub only keeps
- * your imports resolving and documents which Whacka APIs your code uses. Your
- * own code (components, pages, hooks) is the real, complete export. See README.
+ * Authentication management for Heirloom
  */
 
-const __wk = (path) =>
-  new Proxy(function () {}, {
-    get: (_t, prop) =>
-      typeof prop === 'symbol' || prop === 'then' ? undefined : __wk(path + '.' + prop),
-    apply: () => {
-      throw new Error(
-        '`' + path + '` runs on the Whacka platform and is not available in exported code.'
-      );
-    },
-  });
+const AUTH_KEY = 'heirloom_auth_user'
+const listeners = new Set()
 
-export const auth = __wk('auth');
-export const adoptSession = __wk('adoptSession');
+function getStoredUser() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch (e) {
+    console.error('Failed to load user', e)
+  }
+  // Default guest user account
+  const defaultUser = {
+    id: 'user_heirloom_collector',
+    email: 'collector@heirloom.app',
+    displayName: 'Estate Collector',
+  }
+  try {
+    localStorage.setItem(AUTH_KEY, JSON.stringify(defaultUser))
+  } catch {}
+  return defaultUser
+}
+
+let currentUser = getStoredUser()
+
+export const auth = {
+  getCurrentUser() {
+    return currentUser
+  },
+
+  isAuthenticated() {
+    return !!currentUser
+  },
+
+  signIn(customUser = null) {
+    currentUser = customUser || {
+      id: 'user_heirloom_collector',
+      email: 'collector@heirloom.app',
+      displayName: 'Estate Collector',
+    }
+    try {
+      localStorage.setItem(AUTH_KEY, JSON.stringify(currentUser))
+    } catch {}
+    listeners.forEach((fn) => {
+      try { fn(currentUser) } catch (e) { console.error(e) }
+    })
+    return currentUser
+  },
+
+  signOut() {
+    currentUser = null
+    try {
+      localStorage.removeItem(AUTH_KEY)
+    } catch {}
+    listeners.forEach((fn) => {
+      try { fn(null) } catch (e) { console.error(e) }
+    })
+  },
+
+  onAuthChange(callback) {
+    listeners.add(callback)
+    callback(currentUser)
+    return () => {
+      listeners.delete(callback)
+    }
+  },
+}
+
+export const adoptSession = () => currentUser
+export default auth
